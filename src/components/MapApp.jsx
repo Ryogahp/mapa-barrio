@@ -119,19 +119,7 @@ function MarkerPopup({ point }) {
   )
 }
 
-function ErrorBanner({ message }) {
-  return (
-    <div className="map-app">
-      <header className="app-header">
-        <h1 className="app-title">Mis Puntos</h1>
-      </header>
-      <div style={{ padding: 20, textAlign: 'center', marginTop: 40 }}>
-        <p style={{ color: '#ef4444', fontWeight: 600, marginBottom: 8 }}>Error de configuración</p>
-        <p style={{ color: '#64748b', fontSize: 14 }}>{message}</p>
-      </div>
-    </div>
-  )
-}
+
 
 export default function MapApp() {
   const [userPoints, setUserPoints] = useState([])
@@ -237,10 +225,6 @@ export default function MapApp() {
     }
   }, [])
 
-  if (error && supabase === null) {
-    return <ErrorBanner message={error} />
-  }
-
   return (
     <div className="map-app">
       <header className="app-header">
@@ -320,7 +304,11 @@ export default function MapApp() {
             <div className="panel-body">
               <div className="panel-section">
                 <p className="section-title">Mis puntos</p>
-                {error && supabase ? (
+                {!supabase ? (
+                  <p className="empty-state" style={{ color: '#ef4444' }}>
+                    Supabase no configurado — agrega PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON_KEY en Netlify
+                  </p>
+                ) : error ? (
                   <p className="empty-state" style={{ color: '#ef4444' }}>Error: {error}</p>
                 ) : loading ? (
                   <p className="empty-state">Cargando...</p>
