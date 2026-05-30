@@ -10,7 +10,7 @@ import {
 } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { supabase } from '../lib/supabase'
+import { supabase, configError } from '../lib/supabase'
 import kmlData from '../data/kml-data.json'
 
 function pointInPolygon(lng, lat, polygon) {
@@ -131,7 +131,7 @@ export default function MapApp() {
 
   useEffect(() => {
     if (!supabase) {
-      setError('Variables de entorno PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON_KEY no configuradas.')
+      setError(configError || 'Supabase no configurado')
       setLoading(false)
       return
     }
@@ -306,7 +306,7 @@ export default function MapApp() {
                 <p className="section-title">Mis puntos</p>
                 {!supabase ? (
                   <p className="empty-state" style={{ color: '#ef4444' }}>
-                    Supabase no configurado — agrega PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON_KEY en Netlify
+                    {configError || 'Supabase no configurado'} — tras agregar las variables en Netlify, haz un nuevo deploy (Trigger deploy)
                   </p>
                 ) : error ? (
                   <p className="empty-state" style={{ color: '#ef4444' }}>Error: {error}</p>
