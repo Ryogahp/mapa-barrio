@@ -10,7 +10,7 @@ import {
 } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { supabase, configError } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import kmlData from '../data/kml-data.json'
 
 function pointInPolygon(lng, lat, polygon) {
@@ -125,16 +125,10 @@ export default function MapApp() {
   const [userPoints, setUserPoints] = useState([])
   const [panelOpen, setPanelOpen] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
 
   const polygons = useMemo(() => kmlData.polygons, [])
 
   useEffect(() => {
-    if (!supabase) {
-      setError(configError || 'Supabase no configurado')
-      setLoading(false)
-      return
-    }
     fetchPoints()
     subscribeToChanges()
   }, [])
@@ -148,19 +142,17 @@ export default function MapApp() {
         .order('created_at', { ascending: true })
 
       if (error) {
-        setError(error.message)
+        console.error(error.message)
       } else if (data) {
         setUserPoints(data)
       }
     } catch (e) {
-      setError(e.message)
+      console.error(e.message)
     }
     setLoading(false)
   }
 
   function subscribeToChanges() {
-    if (!supabase) return
-
     const channel = supabase
       .channel('puntos-changes')
       .on(
@@ -191,10 +183,6 @@ export default function MapApp() {
 
   const addPoint = useCallback(
     async ({ lat, lng, name }) => {
-      if (!supabase) {
-        alert('Supabase no está configurado')
-        return
-      }
       try {
         const territory = findTerritory(lat, lng, polygons)
         const { error } = await supabase.from('puntos').insert({
@@ -214,7 +202,6 @@ export default function MapApp() {
   )
 
   const deletePoint = useCallback(async (id) => {
-    if (!supabase) return
     try {
       const { error } = await supabase.from('puntos').delete().eq('id', id)
       if (error) {
@@ -304,13 +291,7 @@ export default function MapApp() {
             <div className="panel-body">
               <div className="panel-section">
                 <p className="section-title">Mis puntos</p>
-                {!supabase ? (
-                  <p className="empty-state" style={{ color: '#ef4444' }}>
-                    {configError || 'Supabase no configurado'} — tras agregar las variables en Netlify, haz un nuevo deploy (Trigger deploy)
-                  </p>
-                ) : error ? (
-                  <p className="empty-state" style={{ color: '#ef4444' }}>Error: {error}</p>
-                ) : loading ? (
+                {loading ? (
                   <p className="empty-state">Cargando...</p>
                 ) : userPoints.length === 0 ? (
                   <p className="empty-state">Toca el mapa para añadir un punto</p>

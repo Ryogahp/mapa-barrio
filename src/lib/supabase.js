@@ -1,20 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = 'https://wrkuvdszvscpnlkpilot.supabase.co'
+const supabaseAnonKey =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indya3V2ZHN6dnNjcG5sa3BpbG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNzcwNDUsImV4cCI6MjA5NTY1MzA0NX0.QsLWNOg0SVEssTYRduHEfwj9qmasmrkBS530SDuO3F0'
 
-const missing = !supabaseUrl || !supabaseAnonKey
-
-export const supabase = missing
-  ? null
-  : createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: false },
-    })
-
-export const configError = missing
-  ? !supabaseUrl && !supabaseAnonKey
-    ? 'Faltan PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON_KEY'
-    : !supabaseUrl
-      ? 'Falta PUBLIC_SUPABASE_URL'
-      : 'Falta PUBLIC_SUPABASE_ANON_KEY'
-  : null
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false },
+})
