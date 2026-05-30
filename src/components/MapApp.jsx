@@ -112,10 +112,24 @@ function MarkerPopup({ point }) {
           <p className="popup-territory">{point.territory}</p>
         )}
         <p className="popup-coords">
-          {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+          {Number(point.lat).toFixed(5)}, {Number(point.lng).toFixed(5)}
         </p>
       </div>
     </Popup>
+  )
+}
+
+function ErrorBanner({ message }) {
+  return (
+    <div className="map-app">
+      <header className="app-header">
+        <h1 className="app-title">Mis Puntos</h1>
+      </header>
+      <div style={{ padding: 20, textAlign: 'center', marginTop: 40 }}>
+        <p style={{ color: '#ef4444', fontWeight: 600, marginBottom: 8 }}>Error de configuración</p>
+        <p style={{ color: '#64748b', fontSize: 14 }}>{message}</p>
+      </div>
+    </div>
   )
 }
 
@@ -123,28 +137,42 @@ export default function MapApp() {
   const [userPoints, setUserPoints] = useState([])
   const [panelOpen, setPanelOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const polygons = useMemo(() => kmlData.polygons, [])
 
   useEffect(() => {
+    if (!supabase) {
+      setError('Variables de entorno PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON_KEY no configuradas.')
+      setLoading(false)
+      return
+    }
     fetchPoints()
     subscribeToChanges()
   }, [])
 
   async function fetchPoints() {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('puntos')
-      .select('*')
-      .order('created_at', { ascending: true })
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('puntos')
+        .select('*')
+        .order('created_at', { ascending: true })
 
-    if (!error && data) {
-      setUserPoints(data)
+      if (error) {
+        setError(error.message)
+      } else if (data) {
+        setUserPoints(data)
+      }
+    } catch (e) {
+      setError(e.message)
     }
     setLoading(false)
   }
 
   function subscribeToChanges() {
+    if (!supabase) return
+
     const channel = supabase
       .channel('puntos-changes')
       .on(
@@ -175,30 +203,43 @@ export default function MapApp() {
 
   const addPoint = useCallback(
     async ({ lat, lng, name }) => {
-      const territory = findTerritory(lat, lng, polygons)
-      const { error } = await supabase.from('puntos').insert({
-        lat,
-        lng,
-        name,
-        territory,
-      })
-
-      if (error) {
-        console.error('Error guardando punto:', error)
-        alert('Error al guardar el punto')
+      if (!supabase) {
+        alert('Supabase no está configurado')
+        return
+      }
+      try {
+        const territory = findTerritory(lat, lng, polygons)
+        const { error } = await supabase.from('puntos').insert({
+          lat,
+          lng,
+          name,
+          territory,
+        })
+        if (error) {
+          alert(error.message)
+        }
+      } catch (e) {
+        alert(e.message)
       }
     },
     [polygons],
   )
 
   const deletePoint = useCallback(async (id) => {
-    const { error } = await supabase.from('puntos').delete().eq('id', id)
-
-    if (error) {
-      console.error('Error eliminando punto:', error)
-      alert('Error al eliminar el punto')
+    if (!supabase) return
+    try {
+      const { error } = await supabase.from('puntos').delete().eq('id', id)
+      if (error) {
+        alert(error.message)
+      }
+    } catch (e) {
+      alert(e.message)
     }
   }, [])
+
+  if (error && supabase === null) {
+    return <ErrorBanner message={error} />
+  }
 
   return (
     <div className="map-app">
@@ -253,13 +294,11 @@ export default function MapApp() {
             />
           ))}
 
-          {loading ? null : (
-            userPoints.map((pt) => (
-              <Marker key={pt.id} position={[pt.lat, pt.lng]} icon={userIcon}>
-                <MarkerPopup point={pt} />
-              </Marker>
-            ))
-          )}
+          {!loading && userPoints.map((pt) => (
+            <Marker key={pt.id} position={[pt.lat, pt.lng]} icon={userIcon}>
+              <MarkerPopup point={pt} />
+            </Marker>
+          ))}
         </MapContainer>
       </div>
 
@@ -281,7 +320,9 @@ export default function MapApp() {
             <div className="panel-body">
               <div className="panel-section">
                 <p className="section-title">Mis puntos</p>
-                {loading ? (
+                {error && supabase ? (
+                  <p className="empty-state" style={{ color: '#ef4444' }}>Error: {error}</p>
+                ) : loading ? (
                   <p className="empty-state">Cargando...</p>
                 ) : userPoints.length === 0 ? (
                   <p className="empty-state">Toca el mapa para añadir un punto</p>
@@ -289,18 +330,18 @@ export default function MapApp() {
                   userPoints.map((p) => (
                     <div key={p.id} className="point-row">
                       <div className="point-row-info">
-                        <span className="point-row-name">{p.name}</span>
+                        <span className="point-row-name">{p.name || 'Sin nombre'}</span>
                         {p.territory && (
                           <span className="point-row-territory">{p.territory}</span>
                         )}
                         <span className="point-row-coords">
-                          {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
+                          {Number(p.lat).toFixed(5)}, {Number(p.lng).toFixed(5)}
                         </span>
                       </div>
                       <button
                         className="point-row-delete"
                         onClick={() => deletePoint(p.id)}
-                        aria-label={`Eliminar ${p.name}`}
+                        aria-label={`Eliminar ${p.name || 'punto'}`}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                           <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
